@@ -56,11 +56,7 @@ Below are a few highlights of my exploratory analysis.
 ![alt text](https://github.com/Alexanderc98/shl_players_proj/blob/main/pictures/assists_in_a_season_split_by_position.PNG "assists_in_a_season_split_by_position")
 
 
-![alt text](https://github.com/Alexanderc98/shl_players_proj/blob/main/pictures/position_differences_chart.PNG "position_differences_chart")
 
-### Top 5 players with the most penalty minutes in shl regular season 2021/2022
+### Top 5 players with most penalty minutes in shl regular season 2021/2022
 
 ![alt text](https://github.com/Alexanderc98/shl_players_proj/blob/main/pictures/top_5_penalty_minutes.PNG "top_5_penalty_minutes")
-
-
-
