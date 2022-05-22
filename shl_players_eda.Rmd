@@ -1,0 +1,519 @@
+---
+title: "shl_players_eda"
+output: html_notebook
+---
+
+```{r}
+remove(list = ls()) #Clearing environment
+```
+
+
+Loading the packeges I need.
+```{r}
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+library(cowplot)
+library(splitstackshape)
+library(xtable)
+```
+
+```{r}
+df <- read.csv('players.csv', encoding = 'UTF-8')
+```
+
+
+```{r}
+head(df)
+```
+Columns X. X..1 X... and toi.gp has the wrong names, time to rename them.
+
+```{r}
+df[,'+'] <- df$X.
+df[,'-'] <- df$X..1
+df[,'+/-'] <- df$X...
+df[,'toi/gp'] <- df$toi.gp
+
+df$X. <- NULL
+df$X..1 <- NULL
+df$X... <- NULL
+df$toi.gp <- NULL
+```
+
+```{r}
+summary(df)
+```
+
+```{r}
+sum(is.na(df))
+```
+There are two players that doesnt have a jersey number, which is fine.
+
+```{r}
+str(df)
+```
+
+Making a new columns that shows time on ice per games played in seconds
+
+```{r}
+df$min <- as.numeric(gsub(':.*', '', df$`toi/gp`)) #Extracting hours played
+df$sec <- as.numeric(gsub('.*:', '', df$`toi/gp`)) #Extracting minutes played
+
+df$toi_pgp_s <- df$min*60+df$sec #Combining them into one column that shows total seconds
+#The players spent on ice per games played.
+
+#Removing the columns i dont need anymore.
+df$min <- NULL
+df$sec <- NULL
+df$`toi/gp`<- NULL
+```
+
+```{r}
+str(df)
+```
+Now I will make team and position category into a categorical variable
+
+```{r}
+df$team <- factor(df$team)
+df$pos <- factor(df$pos)
+
+str(df)
+```
+Now its time to feature engineer the player names. Into first name and last name. The names that contains a "*" means the player is no longer playing for that team. Which i will also make a new column saying if they are still playing on the team or not.
+
+```{r}
+df$first_name <- gsub(' .*', '', df$spelare) #Extracting first name
+df$last_name <- gsub('.* ', '', df$spelare) #Extracting last name
+
+df$is_on_team = as.numeric(ifelse(grepl("*", df$first_name, fixed = TRUE), "0", "1"))
+#If first name contains a star the new column gets a 0, otherwise 1.
+
+df$first_name <- gsub('*', '', df$first_name, fixed = TRUE) #Removing the star from name
+
+df$full_name <- paste(df$first_name, df$last_name, sep=" ") #Making a column that shows fullname aswell.
+
+df$spelare <- NULL #Removing this, since i dont need it anymore.
+
+str(df)
+```
+
+Now its time for some exploratory data analysis.
+
+Presenting top 5 players of different metrics:
+
+```{r}
+#Presenting top 5 goal scorers in SHL regular season
+
+chart <- df %>% 
+  select(full_name, g, pos, team) %>%
+  arrange(desc(g)) %>%
+  head(5)
+
+print(xtable(chart), type = "html", file = "top_5_goal_scorers.html") 
+#Having the chart in html makes it possible for me to make it more presentable in a program like microsoft word.
+
+chart
+
+remove(chart) #dont need this anymore
+```
+
+```{r}
+#Presenting top 5 assists by player in SHL regular season
+
+chart <- df %>% 
+  select(full_name, a, pos, team) %>%
+  arrange(desc(a)) %>%
+  head(5)
+
+print(xtable(chart), type = "html", file = "top_5_assists.html")
+
+chart
+
+remove(chart) #dont need this anymore
+```
+
+```{r}
+#Presenting top 5 hits by a player in SHL regular season
+
+chart <- df %>% 
+  select(full_name, hits, pos, team) %>%
+  arrange(desc(hits)) %>%
+  head(5)
+
+print(xtable(chart), type = "html", file = "top_5_hits.html")
+
+chart
+
+remove(chart) #dont need this anymore
+```
+
+```{r}
+#Presenting top 5 penalty minute players in SHL regular season
+
+chart <- df %>% 
+  select(full_name, pim, pos, team) %>%
+  arrange(desc(pim)) %>%
+  head(5)
+
+print(xtable(chart), type = "html", file = "top_5_penalty_minutes.html")
+
+chart
+
+remove(chart) #dont need this anymore
+```
+
+```{r}
+#Presenting top 5 blocked shots by a player in SHL regular season
+
+chart <- df %>% 
+  select(full_name, bks, pos, team) %>%
+  arrange(desc(bks)) %>%
+  head(5)
+
+print(xtable(chart), type = "html", file = "top_5_blocked_shots.html")
+
+chart
+
+remove(chart) #dont need this anymore
+```
+
+Presenting metric differences between the teams
+
+```{r}
+bp <- ggplot(data = df, aes(x = team, y = tp, fill = team)) +
+  geom_boxplot() +
+  labs(x = 'Teams', y = 'Total points', title = "Total points per player, split by teams.") +
+  scale_y_continuous(breaks = seq(0, 400, 10)) +
+  coord_flip() +
+  theme_few()
+
+bp + theme(legend.position="none")
+```
+
+
+```{r}
+bp <- ggplot(data = df, aes(x = team, y = pim, fill = team)) +
+  geom_boxplot() +
+  labs(x = 'Teams', y = 'Penalty minutes', title = "Player penalty minutes, split by teams.") +
+  scale_y_continuous(breaks = seq(0, 400, 5)) +
+  coord_flip() +
+  theme_few()
+
+bp + theme(legend.position="none")
+```
+
+```{r}
+bp <- ggplot(data = df, aes(x = team, y = hits, fill = team)) +
+  geom_boxplot() +
+  labs(x = 'Teams', y = 'Hits', title = "Hits by players, split by teams.") +
+  scale_y_continuous(breaks = seq(0, 400, 10)) +
+  coord_flip() +
+  theme_few()
+
+bp + theme(legend.position="none")
+```
+
+```{r}
+remove(bp) #Dont need this anymore
+```
+
+
+
+Now it's time to create a chart that seperates forwards and defenders.
+
+It will show all the relevant quantitative variables, to get a feel for what we can expect from the average defender and forward.
+
+```{r}
+rm_cols <- c('full_name', 'last_name', 'first_name', 'is_on_team', 'team', 'nr')
+temp_df <- df[, !(names(df) %in% rm_cols)] #Making a temporary dataframe
+
+l <- c()
+l <- as.list(l)
+i=1
+
+while(i<length(temp_df)) { #A loop that brings in all relevant data into a list
+  b <- c(mean(temp_df[temp_df$pos == "F", i+1]), 
+                       sd(temp_df[temp_df$pos == "F", i+1]),
+                       mean(temp_df[temp_df$pos == "D", i+1]), 
+                       sd(temp_df[temp_df$pos == "D", i+1]))
+  b <- round(b, 2)
+  b <- paste(unlist(b), collapse = ' ')
+  l <- c(l,b)
+  i=i+1
+}
+
+l <- as.data.frame(rbind(l))
+l <- as.data.frame(t(l)) #Transposing to make columns into rows
+
+l$a <- l$l
+
+library(splitstackshape)
+chart_df <- cSplit(l, 'a', ' ') #splits column "a" in l dataframe by space
+chart_df$l <- NULL #dont need this anymore
+
+colnames(chart_df) <- c(
+  "Forward (Average)", 
+  "Forward (Standard Deviation)", 
+  "Defender (Average)", 
+  "Defender (Standard Deviation)")
+
+chart_df <- as.matrix(chart_df) #making it into a matrix to be able to rename rows.
+
+rownames(chart_df) <- c(
+  "Games Played",
+  "Goals",
+  "Assists",
+  "Total Points",
+  "Penalty Minutes",
+  "Game-Winning Goals",
+  "Points Per Game",
+  "Shots On Goal",
+  "Hits",
+  "Blocked Shots",
+  "+",
+  "-",
+  "+/-",
+  "TOI/GP (Seconds)")
+
+#Removing stuff i dont need
+remove(l)
+remove(temp_df)
+remove(b)
+remove(i)
+remove(rm_cols)
+
+chart_df
+```
+```{r}
+#The chart looks good, now It's time to export it as html
+
+print(xtable(chart_df, digits = 2), type = "html", file = "position_differences_chart.html")
+
+remove(chart_df) #Dont need this anymore
+```
+
+Now it's time to plot some different graphs showing differences between forwards and defenders in ggplot2.
+
+I will also perform hypothesis testing to see if the difference is statistically significant.
+
+```{r}
+library(ggplot2)
+library(ggthemes)
+library(scales)
+library(dplyr)
+```
+
+
+```{r}
+ggplot(data = df, aes(x = pos)) +
+  geom_bar(fill=c("#FF9999", "#56B4E9"), colour="black") +
+  labs(x = 'Position', y = 'Count', title = "Players in SHL, split by position.") +
+  scale_y_continuous(breaks = seq(0, 400, 40)) +
+  theme_few()
+```
+As we can see in the graph above there is more forwards than defenders. This will reflect the graphs i will show further down, but I hope the graphs can give you a feel about the differences between the positions.
+
+```{r}
+ggplot(data = df, aes(x = g, fill = factor(pos))) +
+  geom_histogram(colour="black") +
+  labs(x = 'Goals', y = 'Count', title = "Goals in a season, split by position.",
+       fill='Position') +
+  scale_x_continuous(breaks = seq(0, 50, 10)) +
+  scale_y_continuous(breaks = seq(0, 400, 10)) +
+  theme_few()
+```
+In the graph above it seems like a forward score more goals than defenders on average.
+
+I'm gonna test this in a hypothesis test with 5% signficance level. I will use the Bonferroni correction because im gonna do a total of 5 hypothesis tests.
+
+```{r}
+#I'm doing the first hypothesis test manually.
+
+#H0 = (Goals by forwards = Goals by defenders)
+#H1 = (Goals by forwards > Goals by defenders)
+
+f_goal_avg <- mean(df$g[df$pos == 'F'])
+d_goal_avg <- mean(df$g[df$pos == 'D'])
+
+f_goal_sd <- sd(df$g[df$pos == 'F'])
+d_goal_sd <- sd(df$g[df$pos == 'D'])
+
+f_goal_n <- length(df$g[df$pos == 'F'])
+d_goal_n <- length(df$g[df$pos == 'D'])
+
+getting_degrees_of_freedom <- t.test(df$g[df$pos == 'F'], df$g[df$pos == 'D'])
+degrees_of_freedom <- getting_degrees_of_freedom[[2]][[1]]
+
+t_alpha <- qt(0.99, df = degrees_of_freedom) #One sided hypothesis test, its 0.99 because of the Bonferroni correction
+
+standard_error <- sqrt((f_goal_sd^2)/f_goal_n + (d_goal_sd^2)/d_goal_n)
+
+t_obs <- (f_goal_avg - d_goal_avg - 0)/standard_error
+
+p_value <- pt(-t_obs, degrees_of_freedom)
+
+p_value
+```
+```{r}
+t_obs > t_alpha
+```
+It's statistically secured that forwards do more goals than defenders in a regular SHL season with a 5% significance level. The null hypothesis is rejected.
+
+```{r}
+#Removing variables i dont need anymore
+remove(f_goal_avg)
+remove(f_goal_sd)
+remove(f_goal_n)
+remove(d_goal_avg)
+remove(d_goal_sd)
+remove(d_goal_n)
+remove(getting_degrees_of_freedom)
+remove(degrees_of_freedom)
+remove(t_alpha)
+remove(t_obs)
+remove(p_value)
+remove(standard_error)
+```
+
+
+
+
+```{r}
+ggplot(data = df, aes(x = a, fill = factor(pos))) +
+  geom_histogram(colour="black") +
+  labs(x = 'Assists', y = 'Count', title = "Assists in a season, split by position.",
+       fill='Position') +
+  scale_x_continuous(breaks = seq(0, 50, 10)) +
+  scale_y_continuous(breaks = seq(0, 400, 10)) +
+  theme_few()
+```
+
+In the graph above it seems like a forward also make more assists than defenders on average.
+
+I'm gonna test this in a hypothesis test again with 5% signficance level. I will use the Bonferroni correction because as i wrote before, I'm gonna do a total of 5 hypothesis tests.
+
+```{r}
+#H0 = (Assists by forwards = Assists by defenders)
+#H1 = (Assists by forwards > Assists by defenders)
+
+#One sided hypothesis test
+t.test(df$a[df$pos == 'F'], df$a[df$pos == 'D'], alternative = "greater")
+```
+p-value of 0.005828 is less than 0.01. 
+
+It's statistically secured that forwards do more assists than defenders in a regular SHL season with a 5% significance level. The null hypothesis is rejected.
+
+
+
+
+```{r}
+ggplot(data = df, aes(x = hits, fill = factor(pos))) +
+  geom_histogram(colour="black") +
+  labs(x = 'Hits', y = 'Count', title = "Hits in a season, split by position.",
+       fill='Position') +
+  scale_x_continuous(breaks = seq(0, 200, 10)) +
+  scale_y_continuous(breaks = seq(0, 200, 10)) +
+  theme_few()
+```
+Here it doesnt seem to be much of a difference between the positions in hits.
+
+I'm again gonna do a hypothesis test to see if there is any difference between the positions here.
+
+```{r}
+#H0 = (Hits by forwards = Hits by defenders)
+#H1 = (Hits by forwards != Hits by defenders)
+
+#two sided hypothesis test
+t.test(df$hits[df$pos == 'F'], df$hits[df$pos == 'D'], alternative = "two.sided")
+```
+p-value of 0.3822 is larger than 0.01.
+
+The null hypothesis is accepted.
+
+
+
+
+```{r}
+ggplot(data = df, aes(x = bks, fill = factor(pos))) +
+  geom_histogram(colour="black") +
+  labs(x = 'Blocked Shots', y = 'Count', title = "Blocked shots in a season, split by position.",
+       fill='Position') +
+  scale_x_continuous(breaks = seq(0, 200, 10)) +
+  scale_y_continuous(breaks = seq(0, 400, 10)) +
+  theme_few()
+```
+Here it seems like the defender is blocking more shots than forwards. Let's see if the difference is statistically significant!
+
+```{r}
+#H0 = (Blocked shots by forwards = Blocked shots by defenders)
+#H1 = (Blocked shots by forwards < Blocked shots by defenders)
+
+#one sided sided hypothesis test
+t.test(df$bks[df$pos == 'F'], df$bks[df$pos == 'D'], alternative = "less")
+```
+p-value of 1.245e-09 is less than 0.01.
+The null hypothesis is rejected.
+
+It's statistically secured that defenders blocks more shots than forwards in a regular SHL season with a 5% signficance level.
+
+
+
+
+```{r}
+ggplot(data = df, aes(x = pim, fill = factor(pos))) +
+  geom_histogram(colour="black") +
+  labs(x = 'Penalty Minutes', y = 'Count', title = "Penalty minutes in a season, split by position.",
+       fill='Position') +
+  scale_x_continuous(breaks = seq(0, 200, 10)) +
+  scale_y_continuous(breaks = seq(0, 400, 10)) +
+  theme_few()
+```
+Here it doesnt seem to be much of a difference, lets see what a hypothesis test says!
+
+```{r}
+#H0 = (Penalty minutes for forwards = Penalty minutes for defenders)
+#H1 = (Penalty minutes for forwards != Penalty minutes for defenders)
+
+#one sided sided hypothesis test
+t.test(df$pim[df$pos == 'F'], df$pim[df$pos == 'D'], alternative = "two.sided")
+```
+p-value of 0.6034 is larger than 0.01.
+The null hypothesis is accepted.
+
+
+
+Could there be a correlation between penalty minutes and hits?
+
+```{r}
+cor(df$hits, df$pim, method = 'pearson')
+```
+There is an positive correlation between how many hits a player does and how many penalty minutes they get.
+
+Let's see how this looks in a linear regression model!
+
+```{r}
+ols_model <- lm(pim ~ hits, data =df)
+
+summary(ols_model)
+```
+
+```{r}
+plot(df$hits, df$pim, xlab = "Hits", ylab = "Penalty minutes", col = "darkgrey",
+     main = "Correlation between hits and penalty minutes", type="p", pch = 20)
+abline(ols_model, col = "blue")
+```
+
+
+According to my linear regression model, per hit a player does they will get 0.437 penalty minutes on average.
+
+It also says that 28.95% of the penalty minutes a player gets in a season can be explained by how many hits they are doing per season.
+
+That could be something to think about for the SHL teams, if they want someone that does alot of hits, they should know that will give them more penalty minutes as a team aswell.
+
+They should think over this and see if it's worth it signing a player because he is doing alot of hits.
+
+
+
+-----------------------------
+
+Thank you for checking out my project!
