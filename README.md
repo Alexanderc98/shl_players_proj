@@ -3,7 +3,7 @@
 * Performed exploratory analysis to help hockey teams understand their data better.
 * Scraped 448 hockey players from shl.se using python and beautifulsoup.
 * Performed hypothesis testing to see if the differences, found in the data, between being a forward or defender is statistically significant.
-* Used Bonferroni correction since i was testing multiple hypotheses.
+* Used Bonferroni correction since I was testing multiple hypotheses.
 * Built a linear regression model to quantify the correlation between hits and penalty minutes.
 
 ## Code and Resources Used
